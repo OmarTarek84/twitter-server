@@ -1,6 +1,5 @@
 const User = require("../models/user");
 const Post = require("../models/post");
-const { Mongoose } = require("mongoose");
 
 const postsPipeline = [
   {
@@ -245,6 +244,61 @@ const replyToPipeline = {
   },
 };
 
+const followPipeline = [
+  {
+    $lookup: {
+      from: User.collection.name,
+      let: { userId: "$followers" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $in: ["$_id", "$$userId"],
+            },
+          },
+        },
+        {
+          $project: {
+            firstName: 1,
+            lastName: 1,
+            username: 1,
+            profilePic: 1,
+            email: 1,
+            _id: 0
+          }
+        }
+      ],
+      as: "followers",
+    },
+  },
+  {
+    $lookup: {
+      from: User.collection.name,
+      let: { userId: "$following" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $in: ["$_id", "$$userId"],
+            },
+          },
+        },
+        {
+          $project: {
+            firstName: 1,
+            lastName: 1,
+            username: 1,
+            profilePic: 1,
+            email: 1,
+            _id: 0
+          }
+        }
+      ],
+      as: "following",
+    },
+  },
+];
+
 exports.getUserByToken = async (req, res) => {
   if (!req.isAuth) {
     return res.status(403).json({ message: "Not Authorized" });
@@ -263,58 +317,7 @@ exports.getUserByToken = async (req, res) => {
         updatedAt: 0
       },
     },
-    {
-      $lookup: {
-        from: User.collection.name,
-        let: { userId: "$followers" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $in: ["$_id", "$$userId"],
-              },
-            },
-          },
-          {
-            $project: {
-              firstName: 1,
-              lastName: 1,
-              username: 1,
-              profilePic: 1,
-              email: 1,
-              _id: 0
-            }
-          }
-        ],
-        as: "followers",
-      },
-    },
-    {
-      $lookup: {
-        from: User.collection.name,
-        let: { userId: "$following" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $in: ["$_id", "$$userId"],
-              },
-            },
-          },
-          {
-            $project: {
-              firstName: 1,
-              lastName: 1,
-              username: 1,
-              profilePic: 1,
-              email: 1,
-              _id: 0
-            }
-          }
-        ],
-        as: "following",
-      },
-    },
+    ...followPipeline
   ]);
 
   if (!foundUser[0]) {
@@ -330,11 +333,12 @@ exports.getProfile = async (req, res) => {
   }
 
   const username = req.params.username;
+  const foundUserByUsername = await User.findOne({username: username});
 
   const replies = await Post.aggregate([
     {
       $match: {
-        postedBy: require('mongoose').Types.ObjectId(req.user._id),
+        postedBy: require('mongoose').Types.ObjectId(foundUserByUsername._id),
         replyTo: { $ne: null },
       },
     },
@@ -551,58 +555,7 @@ exports.getProfile = async (req, res) => {
         as: "retweets",
       },
     },
-    {
-      $lookup: {
-        from: User.collection.name,
-        let: { userId: "$followers" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $in: ["$_id", "$$userId"],
-              },
-            },
-          },
-          {
-            $project: {
-              firstName: 1,
-              lastName: 1,
-              username: 1,
-              profilePic: 1,
-              email: 1,
-              _id: 0
-            }
-          }
-        ],
-        as: "followers",
-      },
-    },
-    {
-      $lookup: {
-        from: User.collection.name,
-        let: { userId: "$following" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $in: ["$_id", "$$userId"],
-              },
-            },
-          },
-          {
-            $project: {
-              firstName: 1,
-              lastName: 1,
-              username: 1,
-              profilePic: 1,
-              email: 1,
-              _id: 0
-            }
-          }
-        ],
-        as: "following",
-      },
-    },
+    ...followPipeline
   ]);
 
   if (!foundUser[0]) {
@@ -666,4 +619,41 @@ exports.followUser = async (req, res, next) => {
     console.log(err);
     return res.status(500).json({ message: "Server Error" });
   }
+};
+
+
+exports.getFollowDetails = async (req, res) => {
+  if (!req.isAuth) {
+    return res.status(403).json({ message: "Not Authorized" });
+  }
+
+  const username = req.params.username;
+  const foundUserByUsername = await User.findOne({username: username});
+
+  if (!foundUserByUsername) {
+    return res.status(500).json({message: 'User Not Found'});
+  }
+
+  const foundUser = await User.aggregate([
+    { $match: { _id: require('mongoose').Types.ObjectId(foundUserByUsername._id) } },
+    {
+      $project: {
+        _id: 0,
+        following: 1,
+        followers: 1
+      },
+    },
+    ...followPipeline
+  ]);
+
+  if (!foundUser[0]) {
+    return res.status(403).json({message: 'Unauthorized'});
+  }
+
+  return res.status(200).json({
+    ...foundUser[0],
+    username: foundUserByUsername.username,
+    firstName: foundUserByUsername.firstName,
+    lastName: foundUserByUsername.lastName
+  });
 };
