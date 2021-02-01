@@ -54,6 +54,15 @@ const userSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'User'
     }],
+    coverPhoto: {
+        type: String,
+        default: null
+    },
+    pinnedPost: {
+        type: Schema.Types.Mixed,
+        default: null,
+        ref: 'Post'
+    }
 }, {timestamps: true});
 
 module.exports = mongoose.model('User', userSchema);

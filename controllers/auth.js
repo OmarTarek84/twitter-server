@@ -4,6 +4,8 @@ const Post = require("../models/post");
 const jwt = require("jsonwebtoken");
 
 const { validationResult } = require("express-validator");
+const { userDetailsPipeline } = require("./pipelines");
+
 
 exports.signup = async (req, res, next) => {
   const errors = await validationResult(req);
@@ -80,7 +82,7 @@ exports.signin = async (req, res) => {
   });
 
   const foundUserAgg = await User.aggregate([
-    { $match: { _id: require("mongoose").Types.ObjectId(foundUser._id) } },
+    { $match: { _id: require('mongoose').Types.ObjectId(foundUser._id) } },
     {
       $project: {
         _id: 0,
@@ -91,116 +93,9 @@ exports.signin = async (req, res) => {
         updatedAt: 0,
       },
     },
-    {
-      $lookup: {
-        from: User.collection.name,
-        let: { userId: "$followers" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $in: ["$_id", "$$userId"],
-              },
-            },
-          },
-          {
-            $project: {
-              firstName: 1,
-              lastName: 1,
-              username: 1,
-              profilePic: 1,
-              email: 1,
-              _id: 0,
-            },
-          },
-        ],
-        as: "followers",
-      },
-    },
-    {
-      $lookup: {
-        from: User.collection.name,
-        let: { userId: "$following" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $in: ["$_id", "$$userId"],
-              },
-            },
-          },
-          {
-            $project: {
-              firstName: 1,
-              lastName: 1,
-              username: 1,
-              profilePic: 1,
-              email: 1,
-              _id: 0,
-            },
-          },
-        ],
-        as: "following",
-      },
-    },
-    {
-      $lookup: {
-        from: Post.collection.name,
-        let: { postId: "$retweets" },
-        pipeline: [
-          {
-            $match: {
-              $expr: {
-                $in: ["$_id", "$$postId"],
-              },
-            },
-          },
-          {
-            $lookup: {
-              from: User.collection.name,
-              let: { userId: "$postedBy" },
-              pipeline: [
-                {
-                  $match: {
-                    $expr: {
-                      $eq: ["$_id", "$$userId"],
-                    },
-                  },
-                },
-                {
-                  $project: {
-                    firstName: 1,
-                    lastName: 1,
-                    username: 1,
-                    profilePic: 1,
-                    email: 1,
-                    _id: 0,
-                  },
-                },
-              ],
-              as: "postedBy",
-            },
-          },
-          {
-            $unwind: {
-              path: "$postedBy",
-              preserveNullAndEmptyArrays: true,
-            },
-          },
-          {
-            $project: {
-              content: 1,
-              createdAt: 1,
-              updatedAt: 1,
-              postedBy: 1,
-              _id: 1,
-            },
-          },
-        ],
-        as: "retweets",
-      },
-    },
+    ...userDetailsPipeline
   ]);
+
   return res.status(200).json({
     message: "success",
     accessToken: accessToken,
