@@ -456,3 +456,80 @@ exports.pinPost = async (req, res) => {
     return res.status(500).json({ message: "Server Error" });
   }
 };
+
+exports.searchUser = async (req, res, next) => {
+  if (!req.isAuth) {
+    return res.status(403).json({ message: "Not Authorized" });
+  }
+
+  const pageSize = +req.query.pageSize || 30;
+  const currentPage = +req.query.currentPage || 1;
+
+  const search = req.query.search;
+
+  const foundUsers = await User.aggregate([
+    {
+      $project: {
+        firstName: 1,
+        lastName: 1,
+        coverPhoto: 1,
+        username: 1,
+        email: 1,
+        profilePic: 1,
+        _id: 0,
+      }
+    },
+    {
+      $facet: {
+        userDetails: [
+          {
+            $match: {
+              $or: [
+                {firstName: {$regex: search, $options: "i"}},
+                {lastName: {$regex: search, $options: "i"}},
+                {userName: {$regex: search, $options: "i"}}
+              ]
+            }
+          },
+          {
+            $skip: pageSize * currentPage - pageSize,
+          },
+          {
+            $limit: pageSize,
+          },
+        ],
+        pagination: [
+          {
+            $match: {
+              $or: [
+                {firstName: {$regex: search, $options: "i"}},
+                {lastName: {$regex: search, $options: "i"}},
+                {userName: {$regex: search, $options: "i"}}
+              ]
+            }
+          },
+          { $count: "totalItemsCount" }
+        ]
+      }
+    },
+    {
+      $unwind: {
+        path: "$pagination",
+        preserveNullAndEmptyArrays: true,
+      },
+    },
+  ]);
+
+  const totalItemsCount =
+      foundUsers[0] && foundUsers[0].pagination
+        ? foundUsers[0].pagination.totalItemsCount
+        : 0;
+
+  return res.status(200).json({
+    ...foundUsers[0],
+    totalItemsCount: totalItemsCount,
+    pageSize: +pageSize,
+    currentPage: +currentPage || 1,
+    pages: Math.ceil(totalItemsCount / pageSize),
+  });
+};

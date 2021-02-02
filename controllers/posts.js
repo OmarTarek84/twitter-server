@@ -55,6 +55,8 @@ exports.getPosts = async (req, res) => {
   const pageSize = +req.query.pageSize || 30;
   const currentPage = +req.query.currentPage || 1;
 
+  const search = req.query.search;
+
   try {
     const allPost = await Post.aggregate([
       {
@@ -67,6 +69,15 @@ exports.getPosts = async (req, res) => {
               },
             },
             {
+              $match: search ? 
+              {
+                "content": {
+                  $regex: search,
+                  $options: "i"
+                }
+              } : {},
+            },
+            {
               $skip: pageSize * currentPage - pageSize,
             },
             {
@@ -75,6 +86,15 @@ exports.getPosts = async (req, res) => {
           ],
           pagination: [
             ...singlePostPipeline,
+            {
+              $match: search ? 
+              {
+                "content": {
+                  $regex: search,
+                  $options: "i"
+                }
+              } : {},
+            },
             {
               $sort: {
                 createdAt: -1,
@@ -403,14 +423,26 @@ exports.deletePost = async (req, res) => {
         .json({ message: "You are not authorized to delete this post" });
     }
     await Post.findByIdAndDelete(postId, { useFindAndModify: false });
-    await User.findByIdAndUpdate(req.user._id, {
-      $pull: {
-        posts: require('mongoose').Types.ObjectId(postId)
-      }
-    }, {useFindAndModify: false});
-    const allPostsWithRetweetData = await Post.find({ retweetData: require('mongoose').Types.ObjectId(postId) });
+    await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $pull: {
+          posts: require("mongoose").Types.ObjectId(postId),
+        },
+      },
+      { useFindAndModify: false }
+    );
+    const allPostsWithRetweetData = await Post.find({
+      retweetData: require("mongoose").Types.ObjectId(postId),
+    });
+    const allRepliesWithRetweetData = await Post.find({
+      replyTo: require("mongoose").Types.ObjectId(postId),
+    });
     await Post.deleteMany({
-      retweetData: require('mongoose').Types.ObjectId(postId)
+      retweetData: require("mongoose").Types.ObjectId(postId),
+    });
+    await Post.deleteMany({
+      replyTo: require("mongoose").Types.ObjectId(postId),
     });
     res.status(200).json({ message: "success", deletedPostId: targetPost._id });
     if (targetPost.replies && targetPost.replies.length > 0) {
@@ -467,7 +499,7 @@ exports.deletePost = async (req, res) => {
         req.user._id,
         {
           $pull: {
-            retweets: require('mongoose').Types.ObjectId(postId),
+            retweets: require("mongoose").Types.ObjectId(postId),
           },
         },
         { useFindAndModify: false }
@@ -529,7 +561,64 @@ exports.deletePost = async (req, res) => {
             await user.save();
           });
         }
-        await Post.findByIdAndDelete(targetPostWithRetweet._id, { useFindAndModify: false });
+      });
+    }
+
+    if (allRepliesWithRetweetData.length > 0) {
+      allRepliesWithRetweetData.forEach(async (targetPostWithRetweet) => {
+        await User.findByIdAndUpdate(
+          targetPostWithRetweet.postedBy,
+          {
+            $pull: {
+              retweets: targetPostWithRetweet._id,
+            },
+          },
+          { useFindAndModify: false }
+        );
+        if (
+          targetPostWithRetweet.replies &&
+          targetPostWithRetweet.replies.length > 0
+        ) {
+          const repliesPosts = await Post.find({
+            _id: { $in: targetPostWithRetweet.replies },
+          });
+          repliesPosts.forEach(async (repPost) => {
+            if (repPost.likes.length > 0) {
+              const allUsersLikedRepliedPost = await User.find({
+                _id: { $in: repPost.likes },
+              });
+              allUsersLikedRepliedPost.forEach(async (user) => {
+                user.likes.pull(repPost._id);
+                await user.save();
+              });
+            }
+          });
+        }
+
+        if (targetPostWithRetweet.replyTo) {
+          await Post.findByIdAndUpdate(
+            targetPostWithRetweet.replyTo,
+            {
+              $pull: {
+                replies: targetPostWithRetweet._id,
+              },
+            },
+            { useFindAndModify: false }
+          );
+        }
+
+        if (
+          targetPostWithRetweet.likes &&
+          targetPostWithRetweet.likes.length > 0
+        ) {
+          const allUsersLikedThisPost = await User.find({
+            _id: { $in: targetPostWithRetweet.likes },
+          });
+          allUsersLikedThisPost.forEach(async (user) => {
+            user.likes.pull(targetPostWithRetweet._id);
+            await user.save();
+          });
+        }
       });
     }
   } catch (err) {

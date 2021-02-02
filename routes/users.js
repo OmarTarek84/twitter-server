@@ -9,6 +9,7 @@ const {
   saveProfilePicToDB,
   saveCoverPhotoToDB,
   pinPost,
+  searchUser,
 } = require("../controllers/users");
 const router = express.Router();
 const isAuth = require("../middlewares/auth");
@@ -43,5 +44,7 @@ router.put(
   [body("postId").notEmpty().withMessage("please provide postId")],
   pinPost
 );
+
+router.get('/search', isAuth, searchUser);
 
 module.exports = router;
