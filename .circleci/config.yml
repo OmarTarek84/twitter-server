@@ -32,7 +32,7 @@ aliases:
 
 jobs:
   build:
-    executor: app-executor
+    executor: app-executor 
     steps:
       - checkout
       - *show-current-branch-name
