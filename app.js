@@ -12,8 +12,8 @@ const postRoutes = require('./routes/posts');
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: true}));
+app.use('/', express.static(path.join(__dirname, 'build')));
 app.use('/images', express.static(path.join(__dirname, 'images')));
-
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -28,6 +28,10 @@ app.use((req, res, next) => {
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/post', postRoutes);
+
+app.get('/*', (req, res, next) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html'));
+});
 
 mongoose
   .connect(

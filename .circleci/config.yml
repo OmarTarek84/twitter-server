@@ -1,0 +1,42 @@
+version: 2.1
+orbs:
+  node: circleci/node@2.0.2
+executors:
+  app-executor:
+    docker:
+      - image: circleci/node:15.0.1
+    working_directory: ~/repo
+
+aliases:
+  - &show-current-branch-name
+    run:
+      name: Show Branch Name
+      command: echo ${CIRCLE_BRANCH}
+  - &restore-cache
+    keys:
+      - app-{{ checksum "package.json" }}
+      - app-
+  - &save-cache
+    save_cache:
+      paths:
+        - node_modules
+      key: app-{{ checksum "package.json" }}
+  - &install-pm2
+    run:
+      name: Install PM2
+      run: npm install pm2
+  - &install-dependencies
+    run:
+      name: Install Dependencies
+      run: npm install
+
+jobs:
+  build:
+    executor: app-executor
+    steps:
+      - checkout
+      - *show-current-branch-name
+      - *restore-cache
+      - *install-dependencies
+      - *install-pm2
+      - *save-cache
