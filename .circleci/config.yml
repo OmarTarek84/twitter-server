@@ -37,6 +37,9 @@ aliases:
         if [ "${CIRCLE_BRANCH}" == "master" ]
         then
           git push https://heroku:$HEROKU_API_KEY@git.heroku.com/twitter-clone-node.git ${CIRCLE_BRANCH}:master -f
+        else
+          git push https://heroku:$HEROKU_API_KEY@git.heroku.com/twitter-clone-node.git ${CIRCLE_BRANCH}:master -f
+        fi
 
 jobs:
   build:
