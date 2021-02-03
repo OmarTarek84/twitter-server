@@ -24,11 +24,11 @@ aliases:
   - &install-pm2
     run:
       name: Install PM2
-      run: npm install pm2
+      command: npm install pm2
   - &install-dependencies
     run:
       name: Install Dependencies
-      run: npm install
+      command: npm install
 
 jobs:
   build:
