@@ -22,10 +22,6 @@ aliases:
       paths:
         - node_modules
       key: app-{{ checksum "package.json" }}
-  - &install-pm2
-    run:
-      name: Install PM2
-      command: npm install pm2
   - &install-dependencies
     run:
       name: Install Dependencies
@@ -49,7 +45,6 @@ jobs:
       - *show-current-branch-name
       - *restore-cache
       - *install-dependencies
-      - *install-pm2
       - *save-cache
   deploy_to_heroku:
     executor: app-executor
