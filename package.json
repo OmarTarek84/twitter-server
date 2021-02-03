@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon app.js",
-    "start:prod": "pm2 start app.js -i max"
+    "start:prod": "pm2-runtime start ecosystem.config.js --env production"
   },
   "keywords": [],
   "author": "",
