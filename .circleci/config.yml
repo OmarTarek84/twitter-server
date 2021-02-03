@@ -30,6 +30,13 @@ aliases:
     run:
       name: Install Dependencies
       command: npm install
+  - &deploy_to_heroku
+    run:
+      name: Deploy To deploy_to_heroku
+      command: |
+        if [ "${CIRCLE_BRANCH}" == "master" ]
+        then
+          git push https://heroku:$HEROKU_API_KEY@git.heroku.com/twitter-clone-node.git ${CIRCLE_BRANCH}:master -f
 
 jobs:
   build:
@@ -41,3 +48,22 @@ jobs:
       - *install-dependencies
       - *install-pm2
       - *save-cache
+  deploy_to_heroku:
+    executor: app-executor
+    steps:
+      - checkout
+      - *show-current-branch-name
+      - *deploy_to_heroku
+
+
+workflows:
+  build_and_deploy:
+    jobs:
+      - build
+      - deploy_to_heroku:
+          requires:
+            - build
+          filters:
+            branches:
+              only:
+                - master
