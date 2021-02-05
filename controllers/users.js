@@ -466,6 +466,7 @@ exports.searchUser = async (req, res, next) => {
   const currentPage = +req.query.currentPage || 1;
 
   const search = req.query.search;
+  const filterUsernames = req.query.filterUsernames && req.query.filterUsernames.length > 0 ? req.query.filterUsernames.split(',') : [];
 
   const foundUsers = await User.aggregate([
     {
@@ -487,8 +488,13 @@ exports.searchUser = async (req, res, next) => {
               $or: [
                 {firstName: {$regex: search, $options: "i"}},
                 {lastName: {$regex: search, $options: "i"}},
-                {userName: {$regex: search, $options: "i"}}
+                {username: {$regex: search, $options: "i"}}
               ]
+            }
+          },
+          {
+            $match: {
+              username: {$nin: [...filterUsernames, req.user.userName]},
             }
           },
           {
@@ -506,6 +512,11 @@ exports.searchUser = async (req, res, next) => {
                 {lastName: {$regex: search, $options: "i"}},
                 {userName: {$regex: search, $options: "i"}}
               ]
+            }
+          },
+          {
+            $match: {
+              username: {$nin: [...filterUsernames, req.user.userName]},
             }
           },
           { $count: "totalItemsCount" }

@@ -29,7 +29,7 @@ const userSchema = new Schema({
     },
     profilePic: {
         type: String,
-        default: 'http://localhost:8080/images/profilePic.jpeg'
+        default: 'https://twitter-clone-node.herokuapp.com/images/profilePic.jpeg'
     },
     posts: [{
         type: Schema.Types.ObjectId,
@@ -62,7 +62,11 @@ const userSchema = new Schema({
         type: Schema.Types.Mixed,
         default: null,
         ref: 'Post'
-    }
+    },
+    chats: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Chat'
+    }]
 }, {timestamps: true});
 
 module.exports = mongoose.model('User', userSchema);

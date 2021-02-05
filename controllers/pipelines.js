@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const Post = require("../models/post");
+const Chat = require("../models/chat");
 
 const likesPipeline = [
   {
@@ -50,6 +51,36 @@ const postedByPipeline = [
   {
     $unwind: {
       path: "$postedBy",
+      preserveNullAndEmptyArrays: true,
+    },
+  },
+];
+
+const chatCreatedByPipeline = [
+  {
+    $lookup: {
+      from: User.collection.name,
+      let: { userId: "$createdBy" },
+      // _id of foreign field User
+      pipeline: [
+        { $match: { $expr: { $eq: ["$_id", "$$userId"] } } },
+        {
+          $project: {
+            firstName: 1,
+            lastName: 1,
+            username: 1,
+            coverPhoto: 1,
+            profilePic: 1,
+            _id: 0,
+          },
+        },
+      ],
+      as: "createdBy",
+    },
+  },
+  {
+    $unwind: {
+      path: "$createdBy",
       preserveNullAndEmptyArrays: true,
     },
   },
@@ -383,9 +414,53 @@ const singlePostPipeline = [
   },
 ];
 
+
+const chatPipeline = [
+  {
+    $lookup: {
+      from: Chat.collection.name,
+      let: {chatId: "$chats"},
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $in: ["$_id", "$$chatId"]
+            }
+          }
+        },
+        ...chatCreatedByPipeline,
+        {
+          $lookup: {
+            from: User.collection.name,
+            let: { userId: "$users" },
+            // _id of foreign field User
+            pipeline: [
+              { $match: { $expr: { $in: ["$_id", "$$userId"] } } },
+              {
+                $project: {
+                  firstName: 1,
+                  lastName: 1,
+                  username: 1,
+                  coverPhoto: 1,
+                  profilePic: 1,
+                  _id: 0,
+                },
+              },
+            ],
+            as: "users",
+          },
+        },
+      ],
+      as: "chats"
+    }
+  }
+];
+
+
 const userDetailsPipeline = [
   ...followPipeline,
   ...retweetsPipeline,
+  ...chatPipeline,
   {
     $lookup: {
       from: Post.collection.name,
@@ -427,4 +502,5 @@ module.exports = {
   retweetUsersPipeline,
   postedByPipeline,
   likesPipeline,
+  chatPipeline
 };

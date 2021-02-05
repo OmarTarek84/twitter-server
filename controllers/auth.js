@@ -40,6 +40,7 @@ exports.signup = async (req, res, next) => {
       retweets: [],
       followers: [],
       following: [],
+      chats: []
     });
     await newUser.save();
 

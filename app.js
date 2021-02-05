@@ -8,6 +8,7 @@ const path = require('path');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const postRoutes = require('./routes/posts');
+const chatRoutes = require('./routes/chats');
 
 
 app.use(bodyParser.json());
@@ -28,6 +29,7 @@ app.use((req, res, next) => {
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/post', postRoutes);
+app.use('/chat', chatRoutes);
 
 app.get('/*', (req, res, next) => {
   res.sendFile(path.join(__dirname, 'build', 'index.html'));
