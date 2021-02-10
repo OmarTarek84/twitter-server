@@ -3,7 +3,9 @@ const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const app = express();
 const path = require('path');
-
+const User = require('./models/user');
+const Chat = require('./models/chat');
+const io = require('./socket');
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
@@ -26,6 +28,10 @@ app.use((req, res, next) => {
   next();
 });
 
+const server = app.listen(process.env.PORT || 8080);
+const socket = io.init(server);
+// const io = require('socket.io')(server, {pingTimeout: 60000, cors: {origin: 'http://localhost:3000'}});
+
 app.use('/auth', authRoutes);
 app.use('/user', userRoutes);
 app.use('/post', postRoutes);
@@ -46,4 +52,31 @@ mongoose
     console.log('FAILED TO CONNECT MONGODB');
   });
 
-app.listen(process.env.PORT || 8080);
+socket.on('connection', (nsSocket) => {
+  console.log('SOCKET CONNECTED');
+
+  nsSocket.on('loggedin', async email => {
+    const foundUser = await User.findOne({email: email});
+    console.log('myuser', foundUser._id);
+    nsSocket.join(foundUser._id.toString());
+  });
+
+  nsSocket.on('loggedout', async email => {
+    const foundUser = await User.findOne({email: email});
+    nsSocket.leave(foundUser._id.toString());
+  });
+
+  nsSocket.on('join room', room => {
+    nsSocket.join(room);
+  });
+
+  nsSocket.on('sendMessage', async data => {
+    const foundChat = await Chat.findById(data.chatId);
+    const myUser = await User.findOne({email: data.sender.email});
+    foundChat.users.forEach(user => {
+      if (user.toString() === myUser._id.toString()) return;
+      console.log('user', user.toString());
+      nsSocket.in(user.toString()).emit("message received", data);
+    });
+  });
+});

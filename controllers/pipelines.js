@@ -1,6 +1,7 @@
 const User = require("../models/user");
 const Post = require("../models/post");
 const Chat = require("../models/chat");
+const Message = require("../models/message");
 
 const likesPipeline = [
   {
@@ -414,6 +415,39 @@ const singlePostPipeline = [
   },
 ];
 
+const senderPipeline = [
+  {
+    $lookup: {
+      from: User.collection.name,
+      let: { userId: "$sender" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $eq: ["$_id", "$$userId"]
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            firstName: 1,
+            lastName: 1,
+            username: 1,
+            profilePic: 1,
+          }
+        }
+      ],
+      as: "sender"
+    }
+  },
+  {
+    $unwind: {
+      path: "$sender",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+];
 
 const chatPipeline = [
   {
@@ -429,6 +463,67 @@ const chatPipeline = [
           }
         },
         ...chatCreatedByPipeline,
+        {
+          $lookup: {
+            from: Message.collection.name,
+            let: {msgId: "$latestMessage"},
+            pipeline: [
+              {
+                $match: {
+                  $expr: {
+                    $eq: ["$_id", "$$msgId"]
+                  }
+                }
+              },
+              {
+                $project: {
+                  content: 1,
+                  sender: 1,
+                  _id: 1
+                }
+              },
+              {
+                $lookup: {
+                  from: User.collection.name,
+                  let: { userId: "$sender" },
+                  pipeline: [
+                    {
+                      $match: {
+                        $expr: {
+                          $eq: ["$_id", "$$userId"],
+                        },
+                      },
+                    },
+                    {
+                      $project: {
+                        firstName: 1,
+                        lastName: 1,
+                        profilePic: 1,
+                        coverPhoto: 1,
+                        username: 1,
+                        _id: 0,
+                      },
+                    },
+                  ],
+                  as: "sender",
+                },
+              },
+              {
+                $unwind: {
+                  path: "$sender",
+                  preserveNullAndEmptyArrays: true
+                }
+              }
+            ],
+            as: "latestMessage"
+          }
+        },
+        {
+          $unwind: {
+            path: "$latestMessage",
+            preserveNullAndEmptyArrays: true
+          }
+        },
         {
           $lookup: {
             from: User.collection.name,
@@ -491,6 +586,34 @@ const userDetailsPipeline = [
   },
 ];
 
+const readByPipeline = [
+  {
+    $lookup: {
+      from: User.collection.name,
+      let: { userId: "$readBy" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $in: ["$_id", "$$userId"]
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            firstName: 1,
+            lastName: 1,
+            username: 1,
+            profilePic: 1,
+          }
+        }
+      ],
+      as: "readBy"
+    }
+  },
+];
+
 module.exports = {
   postsPipeline,
   retweetDataPipeline,
@@ -502,5 +625,7 @@ module.exports = {
   retweetUsersPipeline,
   postedByPipeline,
   likesPipeline,
-  chatPipeline
+  chatPipeline,
+  senderPipeline,
+  readByPipeline
 };

@@ -15,8 +15,8 @@ const chatSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'User'
     }],
-    lastestMessage: {
-        type: Schema.Types.ObjectId,
+    latestMessage: {
+        type: Schema.Types.Mixed,
         ref: 'Message'
     },
     createdBy: {
