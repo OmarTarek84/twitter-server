@@ -29,7 +29,7 @@ app.use((req, res, next) => {
 });
 
 const server = app.listen(process.env.PORT || 8080);
-const socket = io.init(server);
+const socket = io.init(server, {transports: ['websocket']});
 // const io = require('socket.io')(server, {pingTimeout: 60000, cors: {origin: 'http://localhost:3000'}});
 
 app.use('/auth', authRoutes);
