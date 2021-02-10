@@ -6,7 +6,7 @@ const path = require('path');
 const User = require('./models/user');
 const Chat = require('./models/chat');
 const io = require('./socket');
-
+// "start:prod": "pm2-runtime start ecosystem.config.js --env production"
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
 const postRoutes = require('./routes/posts');
