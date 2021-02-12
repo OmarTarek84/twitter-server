@@ -1,11 +1,10 @@
 const bcrypt = require("bcryptjs");
 const User = require("../models/user");
-const Post = require("../models/post");
+const Notification = require("../models/notification");
 const jwt = require("jsonwebtoken");
 
 const { validationResult } = require("express-validator");
 const { userDetailsPipeline } = require("./pipelines");
-
 
 exports.signup = async (req, res, next) => {
   const errors = await validationResult(req);
@@ -40,7 +39,7 @@ exports.signup = async (req, res, next) => {
       retweets: [],
       followers: [],
       following: [],
-      chats: []
+      chats: [],
     });
     await newUser.save();
 
@@ -83,7 +82,7 @@ exports.signin = async (req, res) => {
   });
 
   const foundUserAgg = await User.aggregate([
-    { $match: { _id: require('mongoose').Types.ObjectId(foundUser._id) } },
+    { $match: { _id: require("mongoose").Types.ObjectId(foundUser._id) } },
     {
       $project: {
         _id: 0,
@@ -94,12 +93,31 @@ exports.signin = async (req, res) => {
         updatedAt: 0,
       },
     },
-    ...userDetailsPipeline
+    ...userDetailsPipeline,
+  ]);
+
+  const getNotificationNumber = await Notification.aggregate([
+    {
+      $match: {
+        userTo: require("mongoose").Types.ObjectId(foundUser._id),
+        opened: false,
+      },
+    },
+    {
+      $count: "numberOfNotifications",
+    },
   ]);
 
   return res.status(200).json({
     message: "success",
     accessToken: accessToken,
-    userDetails: foundUserAgg[0],
+    userDetails: {
+      ...foundUserAgg[0],
+      numberOfNotifications:
+        getNotificationNumber[0] &&
+        getNotificationNumber[0].numberOfNotifications
+          ? getNotificationNumber[0].numberOfNotifications
+          : 0,
+    },
   });
 };

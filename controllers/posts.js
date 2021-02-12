@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const Post = require("../models/post");
+const Notification = require("../models/notification");
 
 const { validationResult } = require("express-validator");
 const {
@@ -162,10 +163,22 @@ exports.likePost = async (req, res) => {
       { [option]: { likes: userId } },
       { useFindAndModify: false, new: true }
     ).populate(populateQuery);
-    return res.status(200).json({
+
+    res.status(200).json({
       postId: afterPostLiked._id,
       likes: afterPostLiked.likes,
     });
+
+    const theLikesPostID = await Post.findById(postId);
+
+    if (!isLiked) {
+      try {
+        await Notification.insertNotification(theLikesPostID.postedBy, userId, "postLike", null, afterPostLiked._id, null);
+      } catch(err) {
+        console.log(err);
+      }
+    }
+
   } catch (err) {
     return res.status(500).json({ message: "Server error" });
   }
@@ -275,7 +288,7 @@ exports.retweetPost = async (req, res) => {
         { $addToSet: { retweets: saveNewPost._id } },
         { useFindAndModify: false, new: true }
       );
-      return res.status(200).json({
+      res.status(200).json({
         message: "success",
         type: "add",
         newlyAddedPost: {
@@ -283,6 +296,11 @@ exports.retweetPost = async (req, res) => {
         },
         originalPostId: originalPost._id,
       });
+      try {
+        await Notification.insertNotification(originalPost.postedBy, userId, "retweet", null, newPost._id, null);
+      } catch(err) {
+        console.log(err);
+      }
     }
   } catch (err) {
     console.log(err);
@@ -337,6 +355,13 @@ exports.addReply = async (req, res, next) => {
       },
       { useFindAndModify: false }
     );
+
+    try {
+      const populatedPost = await Post.findById(newReplyPost._id).populate('replyTo');
+      await Notification.insertNotification(populatedPost.replyTo.postedBy, req.user._id, "reply", null, newReplyPost._id, null);
+    } catch(err) {
+      console.log(err);
+    }
 
     const originalPost = await Post.aggregate([
       {

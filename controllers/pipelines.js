@@ -614,6 +614,75 @@ const readByPipeline = [
   },
 ];
 
+const userFromPipeline = [
+  {
+    $lookup: {
+      from: User.collection.name,
+      let: { userId: "$userFrom" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $eq: ["$_id", "$$userId"]
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            firstName: 1,
+            lastName: 1,
+            username: 1,
+            profilePic: 1,
+          }
+        }
+      ],
+      as: "userFrom"
+    }
+  },
+  {
+    $unwind: {
+      path: "$userFrom",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+];
+
+
+const notificationUseridPipeline = [
+  {
+    $lookup: {
+      from: User.collection.name,
+      let: { userId: "$userId" },
+      pipeline: [
+        {
+          $match: {
+            $expr: {
+              $eq: ["$_id", "$$userId"]
+            }
+          }
+        },
+        {
+          $project: {
+            _id: 0,
+            firstName: 1,
+            lastName: 1,
+            username: 1,
+            profilePic: 1,
+          }
+        }
+      ],
+      as: "userId"
+    }
+  },
+  {
+    $unwind: {
+      path: "$userId",
+      preserveNullAndEmptyArrays: true
+    }
+  },
+];
+
 module.exports = {
   postsPipeline,
   retweetDataPipeline,
@@ -627,5 +696,7 @@ module.exports = {
   likesPipeline,
   chatPipeline,
   senderPipeline,
-  readByPipeline
+  readByPipeline,
+  userFromPipeline,
+  notificationUseridPipeline
 };

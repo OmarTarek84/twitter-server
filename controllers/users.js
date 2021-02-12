@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const Post = require("../models/post");
+const Notification = require("../models/notification");
 const AWS = require("aws-sdk");
 const { validationResult } = require("express-validator");
 const {
@@ -43,7 +44,23 @@ exports.getUserByToken = async (req, res) => {
     if (!foundUser[0]) {
       return res.status(403).json({ message: "Unauthorized" });
     }
-    return res.status(200).json(foundUser[0]);
+
+    const getNotificationNumber = await Notification.aggregate([
+      {
+        $match: {
+          userTo: require('mongoose').Types.ObjectId(req.user._id),
+          opened: false
+        }
+      },
+      {
+        $count: "numberOfNotifications"
+      },
+    ]);
+
+    return res.status(200).json({
+      ...foundUser[0],
+      numberOfNotifications: getNotificationNumber[0] && getNotificationNumber[0].numberOfNotifications ? getNotificationNumber[0].numberOfNotifications: 0
+    });
   } catch (err) {
     console.log(err);
     return res.status(500).json({ message: "Server Error" });
@@ -278,11 +295,21 @@ exports.followUser = async (req, res, next) => {
       { useFindAndModify: false, new: true }
     ).select("-_id firstName lastName username profilePic email");
 
-    return res.status(200).json({
+    res.status(200).json({
       message: "success",
       newfollowingUser: afterAddFollowing,
       type: option === "$pull" ? "Delete" : "Add",
     });
+
+    if (!isFollowing) {
+      try {
+        await Notification.insertNotification(otherUserId, myUserId, "follow", require('mongoose').Types.ObjectId(myUserId), null, null);
+      } catch(err) {
+        console.log(err);
+      }
+    }
+
+    
   } catch (err) {
     console.log(err);
     return res.status(500).json({ message: "Server Error" });

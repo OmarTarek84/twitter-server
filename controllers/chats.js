@@ -2,6 +2,7 @@ const { validationResult } = require("express-validator");
 const Chat = require("../models/chat");
 const User = require("../models/user");
 const Message = require("../models/message");
+const Notification = require("../models/notification");
 const mongoose = require("mongoose");
 const { senderPipeline, readByPipeline } = require("./pipelines");
 
@@ -304,10 +305,21 @@ exports.sendMessage = async (req, res) => {
 
       res.status(200).json(populatedsaveNewMessage.toJSON());
       
-      await Chat.findByIdAndUpdate(req.query.chatId, {
+      const targetedChat = await Chat.findByIdAndUpdate(req.query.chatId, {
         latestMessage: mongoose.Types.ObjectId(saveNewMessage._id)
       }, {useFindAndModify: false});
+
+      insertNotificationFunc(req.user._id, targetedChat);
+
   } catch (err) {
     return res.status(403).json({ message: "Not Authorized" });
   }
 };
+
+
+function insertNotificationFunc(userFrom, chat) {
+  chat.users.forEach(async userId => {
+    if (userId.toString() === userFrom.toString()) return;
+    await Notification.insertNotification(userId, userFrom, 'newMessage', null, null, chat._id);
+  });
+}
