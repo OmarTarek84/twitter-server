@@ -1,0 +1,2 @@
+(this["webpackJsonptwitter-clone"]=this["webpackJsonptwitter-clone"]||[]).push([[19],{195:function(t,e,n){"use strict";n.r(e);var c=n(2);n(1);e.default=function(){return Object(c.jsx)("h1",{style:{textAlign:"center",marginTop:"60px"},children:"404 Page Not Found"})}}}]);
+//# sourceMappingURL=19.e0e0dfa2.chunk.js.map

@@ -171,7 +171,7 @@ exports.likePost = async (req, res) => {
 
     const theLikesPostID = await Post.findById(postId);
 
-    if (!isLiked) {
+    if (!isLiked && theLikesPostID.postedBy.toString() !== userId.toString()) {
       try {
         await Notification.insertNotification(theLikesPostID.postedBy, userId, "postLike", null, afterPostLiked._id, null);
       } catch(err) {
@@ -296,10 +296,12 @@ exports.retweetPost = async (req, res) => {
         },
         originalPostId: originalPost._id,
       });
-      try {
-        await Notification.insertNotification(originalPost.postedBy, userId, "retweet", null, newPost._id, null);
-      } catch(err) {
-        console.log(err);
+      if (originalPost.postedBy.toString() !== userId.toString()) {
+        try {
+          await Notification.insertNotification(originalPost.postedBy, userId, "retweet", null, newPost._id, null);
+        } catch(err) {
+          console.log(err);
+        }
       }
     }
   } catch (err) {
