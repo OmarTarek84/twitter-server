@@ -65,6 +65,7 @@ socket.on("connection", (nsSocket) => {
   });
 
   nsSocket.on("loggedin", async (email) => {
+    console.log('EMAIL', email);
     const foundUser = await User.findOne({ email: email });
     console.log("myuser", foundUser._id);
     nsSocket.join(foundUser._id.toString());
